@@ -1,4 +1,4 @@
-#!/usr/bin/python
+#!/usr/bin/env python
 
 """
   rurasort.py 1.9
@@ -30,6 +30,8 @@ import sys
 import unicodedata
 
 from bs4 import BeautifulSoup
+
+work_queue = multiprocessing.Queue()
 
 user_file_handler = None
 domain_file_handler = None
@@ -267,54 +269,55 @@ def No_Numbers(inputstring):
     else: return inputstring
 
 
-def thread_worker(words):
-    # multiprocessing worker
-    words=words.rstrip('\n')
-    words=words.rstrip('\r\n')
-    if args.maxlen:
-        words = Maxlen(words)
-    if args.minlen:
-        words = Minlen(words)
-    if args.digit_trim:
-        words = Digit_Trim(words)
-    if args.special_trim:
-        words = Special_Trim(words)
-    if args.dup_remove:
-        words = Dup_Remove(words)
-    if args.no_sentence:
-        words = DeSentenceify(words)
-    if args.lower:
-        words = Lower(words)
-    if args.no_numbers:
-        words = No_Numbers(words)
-    if args.detab:
-        words = Detab(words)
-    if args.maxtrim:
-        words = Maxtrim(words)
-    if args.sense:
-        words = Sense(words)
-    if args.hashfilter:
-        words = Hashfilter(words)
-    if args.emailsplit:
-        words = Emailsplit(words)
-    if args.wordify:
-        for items in Wordify(words):
-            print(items)
-    if args.emailsort:
-        for items in Emailsort(words):
-            print(items)
-    try:
-        if len(words) > 0:
-            if (not args.wordify) and (not args.emailsort):
-                print(words)
-    except:
-        return
+def thread_worker(work_queue):
+    for words in iter(work_queue.get, None): 
+        # multiprocessing worker
+        words=words.rstrip('\n')
+        words=words.rstrip('\r\n')
+        if args.maxlen:
+            words = Maxlen(words)
+        if args.minlen:
+            words = Minlen(words)
+        if args.digit_trim:
+            words = Digit_Trim(words)
+        if args.special_trim:
+            words = Special_Trim(words)
+        if args.dup_remove:
+            words = Dup_Remove(words)
+        if args.no_sentence:
+            words = DeSentenceify(words)
+        if args.lower:
+            words = Lower(words)
+        if args.no_numbers:
+            words = No_Numbers(words)
+        if args.detab:
+            words = Detab(words)
+        if args.maxtrim:
+            words = Maxtrim(words)
+        if args.sense:
+            words = Sense(words)
+        if args.hashfilter:
+            words = Hashfilter(words)
+        if args.emailsplit:
+            words = Emailsplit(words)
+        if args.wordify:
+            print("\n".join(words))
+        if args.emailsort:
+            print("\n".join(words))
+        try:
+            if len(words) > 0:
+                if (not args.wordify) and (not args.emailsort):
+                    print(words)
+        except:
+            return
+    return True
 
 def main():
 #Main Starts Here
 #Lets get our file open and begin processing
     global user_file_handler
     global domain_file_handler
+    global work_queue
 
     if not args.infile:
         print("[-] I need an input file with --infile! or try --help for help.")
@@ -332,21 +335,29 @@ def main():
         if args.emailsplit:
             user_file_handler = open(args.emailsplit[0], 'a')
             domain_file_handler = open(args.emailsplit[1], 'a')
-        if num_processes > 1:
-            print("[-] Emailsplit can only run in single threaded mode.")
-            num_processes = 1
+            if num_processes > 1:
+                print("[-] Emailsplit can only run in single threaded mode.")
+                num_processes = 1
     except IOError as error:
         print("[-] Problem during Email Split file handling:" +error.args[1])
 
     print("[-] Processing wordlist using %d processes" % num_processes)
-    pool = multiprocessing.Pool(processes=num_processes)
+
+    workers = []
+    for w in range(num_processes):
+        proc = multiprocessing.Process(target=thread_worker, args=(work_queue,))
+        proc.start()
+        workers.append(proc)
 
     try:
         with open(args.infile, 'r') as fd:
-            for words in fd:
-                pool.apply_async(thread_worker, args=(words,))
+            for line in fd:
+                work_queue.put(line)
     except IOError as error:
         print(error.args[1]+" : "+args.infile)
+
+    for w in workers:
+        work_queue.put(None)
 
 
 if __name__ == "__main__":

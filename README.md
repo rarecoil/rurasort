@@ -11,4 +11,4 @@ This program CANNOT read from STDIN, it requires a file for input.
 
 To get help, simply run the script with --help. If you cannot execute it try chmod +x rurasort.py and make sure Python is in the correct environment paths. . 
 
-To install rurasort's dependencies, use `pip install requirements.txt`.
+To install rurasort's dependencies, use `pip install -r requirements.txt`.
