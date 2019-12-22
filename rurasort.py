@@ -61,43 +61,19 @@ cmdparams.add_argument("--noutf8",help="Only output non UTF-8 characters. Works 
 cmdparams.add_argument("--processes",help="Multiprocess, use n threads.", dest="num_processes", type=int, default=multiprocessing.cpu_count())
 args = cmdparams.parse_args()
 
-# Precompiled Regexes
-HASHENGINE_REGEXES = [
-    re.compile(r'(^|[^a-fA-F0-9])[a-fA-F0-9]{32}([^a-fA-F0-9]|\$)'),
-    re.compile(r'[0-7][0-9a-f]{7}[0-7][0-9a-f]{7}'),
-    re.compile(r'([0-9a-zA-Z]{32}):(\w{32})'),
-    re.compile(r'([0-9a-zA-Z]{32}):(\S{3,32})'),
-    re.compile(r'\$H\$\S{31}'),
-    re.compile(r'\$P\$\S{31}'),
-    re.compile(r'\$S\$\S{52}'),
-    re.compile(r'\$1\$\w{8}\S{22}'),
-    re.compile(r'\$6\$\w{8}\S{86}'),
-    re.compile(r'(^|[^a-fA-F0-9])[a-fA-F0-9]{40}([^a-fA-F0-9]|$)'),
-    re.compile(r'(^|[^a-fA-F0-9])[a-fA-F0-9]{128}([^a-fA-F0-9]|$)'),
-    re.compile(r'(^|[^a-fA-F0-9])[a-fA-F0-9]{64}([^a-fA-F0-9]|$)'),
-    re.compile(r'(^|[^a-fA-F0-9])[a-fA-F0-9]{96}([^a-fA-F0-9]|$)'),
-    re.compile(r'\$2a\$10\$\S{53}'),
-    re.compile(r'\$apr1\$\w{8}\S{22}'),
-    re.compile(r'\$md5\$rounds\=904\$\w{16}\S{23}'),
-    re.compile(r'\$5\$\w{8}\$\S{43}'),
-    re.compile(r'\{ssha256\}06\$\S{16}\$\S{43}'),
-    re.compile(r'\{ssha1\}06\$\S{16}\$\S{27}'),
-    re.compile(r'\$ml\$\w{5}\$\w{64}\$\w{128}'),
-    re.compile(r'([0-9a-fA-F]{130}):(\w{40})'),
-    re.compile(r'\$8\$\S{14}\$\S{43}'),
-    re.compile(r'\$9\$\S{14}\$\S{43}'),
-    re.compile(r'pbkdf2_sha256\$20000\$\S{57}'),
-    re.compile(r'sha1\$\w{5}\$\w{40}'),
-    re.compile(r'(0x\w{52})'),
-    re.compile(r'(0x\w{92})'),
-    re.compile(r'([0-9]{1,3}[\.]){3}[0-9]{1,3}')
-]
 EMAIL_RE = re.compile('[a-zA-Z0-9.#?$*_-]+@[a-zA-Z0-9.#?$*_-]+')
-
+hashengine_regexes_compiled = False
 
 # Hash Detection Engine. These engines are from hashfind.py, and detect various hash types
 # this engine checks the string candidate for a match to valid hash types and filters it out.
 def Hashfilter(inputstring):
+    global HASHENGINE_REGEXES
+    global hashengine_regexes_compiled
+
+    if hashengine_regexes_compiled == False:
+        HASHENGINE_REGEXES = compile_hashfilter_regexes()
+        hashengine_regexes_compiled = True
+    
     found_hash = False
     for hash_re in HASHENGINE_REGEXES:
         result = hash_re.search(inputstring)
@@ -107,6 +83,40 @@ def Hashfilter(inputstring):
     if found_hash:
         return ""
     return inputstring
+
+# compile hashfilter regexes once.
+def compile_hashfilter_regexes():
+    return [
+        re.compile(r'(^|[^a-fA-F0-9])[a-fA-F0-9]{32}([^a-fA-F0-9]|\$)'),
+        re.compile(r'[0-7][0-9a-f]{7}[0-7][0-9a-f]{7}'),
+        re.compile(r'([0-9a-zA-Z]{32}):(\w{32})'),
+        re.compile(r'([0-9a-zA-Z]{32}):(\S{3,32})'),
+        re.compile(r'\$H\$\S{31}'),
+        re.compile(r'\$P\$\S{31}'),
+        re.compile(r'\$S\$\S{52}'),
+        re.compile(r'\$1\$\w{8}\S{22}'),
+        re.compile(r'\$6\$\w{8}\S{86}'),
+        re.compile(r'(^|[^a-fA-F0-9])[a-fA-F0-9]{40}([^a-fA-F0-9]|$)'),
+        re.compile(r'(^|[^a-fA-F0-9])[a-fA-F0-9]{128}([^a-fA-F0-9]|$)'),
+        re.compile(r'(^|[^a-fA-F0-9])[a-fA-F0-9]{64}([^a-fA-F0-9]|$)'),
+        re.compile(r'(^|[^a-fA-F0-9])[a-fA-F0-9]{96}([^a-fA-F0-9]|$)'),
+        re.compile(r'\$2a\$10\$\S{53}'),
+        re.compile(r'\$apr1\$\w{8}\S{22}'),
+        re.compile(r'\$md5\$rounds\=904\$\w{16}\S{23}'),
+        re.compile(r'\$5\$\w{8}\$\S{43}'),
+        re.compile(r'\{ssha256\}06\$\S{16}\$\S{43}'),
+        re.compile(r'\{ssha1\}06\$\S{16}\$\S{27}'),
+        re.compile(r'\$ml\$\w{5}\$\w{64}\$\w{128}'),
+        re.compile(r'([0-9a-fA-F]{130}):(\w{40})'),
+        re.compile(r'\$8\$\S{14}\$\S{43}'),
+        re.compile(r'\$9\$\S{14}\$\S{43}'),
+        re.compile(r'pbkdf2_sha256\$20000\$\S{57}'),
+        re.compile(r'sha1\$\w{5}\$\w{40}'),
+        re.compile(r'(0x\w{52})'),
+        re.compile(r'(0x\w{92})'),
+        re.compile(r'([0-9]{1,3}[\.]){3}[0-9]{1,3}')
+    ]
+
 
 
 # Filter Engines. The Engines process a particular string, depending on whether the command-line requested such or not.
@@ -128,7 +138,7 @@ def Emailsort(inputstring):
 def Emailsplit(inputstring):
     global user_file_handler
     global domain_file_handler
-    resultset = []
+    
     results = EMAIL_RE.search(inputstring)
     if results:
         find_positional = inputstring.find('@')
@@ -269,47 +279,50 @@ def No_Numbers(inputstring):
     else: return inputstring
 
 
+def process_words(words):
+    words=words.rstrip('\n')
+    words=words.rstrip('\r\n')
+    if args.maxlen:
+        words = Maxlen(words)
+    if args.minlen:
+        words = Minlen(words)
+    if args.digit_trim:
+        words = Digit_Trim(words)
+    if args.special_trim:
+        words = Special_Trim(words)
+    if args.dup_remove:
+        words = Dup_Remove(words)
+    if args.no_sentence:
+        words = DeSentenceify(words)
+    if args.lower:
+        words = Lower(words)
+    if args.no_numbers:
+        words = No_Numbers(words)
+    if args.detab:
+        words = Detab(words)
+    if args.maxtrim:
+        words = Maxtrim(words)
+    if args.sense:
+        words = Sense(words)
+    if args.hashfilter:
+        words = Hashfilter(words)
+    if args.emailsplit:
+        words = Emailsplit(words)
+    if args.wordify:
+        print("\n".join(words))
+    if args.emailsort:
+        print("\n".join(words))
+    try:
+        if len(words) > 0:
+            if (not args.wordify) and (not args.emailsort):
+                print(words)
+    except:
+        return
+
 def thread_worker(work_queue):
     for words in iter(work_queue.get, None): 
         # multiprocessing worker
-        words=words.rstrip('\n')
-        words=words.rstrip('\r\n')
-        if args.maxlen:
-            words = Maxlen(words)
-        if args.minlen:
-            words = Minlen(words)
-        if args.digit_trim:
-            words = Digit_Trim(words)
-        if args.special_trim:
-            words = Special_Trim(words)
-        if args.dup_remove:
-            words = Dup_Remove(words)
-        if args.no_sentence:
-            words = DeSentenceify(words)
-        if args.lower:
-            words = Lower(words)
-        if args.no_numbers:
-            words = No_Numbers(words)
-        if args.detab:
-            words = Detab(words)
-        if args.maxtrim:
-            words = Maxtrim(words)
-        if args.sense:
-            words = Sense(words)
-        if args.hashfilter:
-            words = Hashfilter(words)
-        if args.emailsplit:
-            words = Emailsplit(words)
-        if args.wordify:
-            print("\n".join(words))
-        if args.emailsort:
-            print("\n".join(words))
-        try:
-            if len(words) > 0:
-                if (not args.wordify) and (not args.emailsort):
-                    print(words)
-        except:
-            return
+        process_words(words)
     return True
 
 def main():
@@ -343,21 +356,30 @@ def main():
 
     print("[-] Processing wordlist using %d processes" % num_processes)
 
-    workers = []
-    for w in range(num_processes):
-        proc = multiprocessing.Process(target=thread_worker, args=(work_queue,))
-        proc.start()
-        workers.append(proc)
+    if num_processes == 1:
+        # avoid all multiprocessing overhead
+        try:
+            with open(args.infile, 'r') as fd:
+                for line in fd:
+                    process_words(line)
+        except IOError as error:
+            print(error.args[1]+" : "+args.infile)
+    else:
+        workers = []
+        for _ in range(num_processes):
+            proc = multiprocessing.Process(target=thread_worker, args=(work_queue,))
+            proc.start()
+            workers.append(proc)
+        try:
+            with open(args.infile, 'r') as fd:
+                for line in fd:
+                    work_queue.put(line)
+        except IOError as error:
+            print(error.args[1]+" : "+args.infile)
 
-    try:
-        with open(args.infile, 'r') as fd:
-            for line in fd:
-                work_queue.put(line)
-    except IOError as error:
-        print(error.args[1]+" : "+args.infile)
-
-    for w in workers:
-        work_queue.put(None)
+        for _ in workers:
+            work_queue.put(None)
+    sys.exit(0)
 
 
 if __name__ == "__main__":
