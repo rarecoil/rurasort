@@ -58,7 +58,7 @@ cmdparams.add_argument("--email-sort",help="Converts email addresses to username
 cmdparams.add_argument("--email-split",nargs=2, help="Extracts email addresses to username and domain and appends to <user wordlist> and <domain wordlist>",dest="emailsplit",metavar='<user/domain.txt>')
 cmdparams.add_argument("--dewebify",action="store_true",help="Extracts words from an HTML specified by --infile and outputs a plain wordlist.", dest="dewebify")
 cmdparams.add_argument("--noutf8",help="Only output non UTF-8 characters. Works with --dewebify only",dest="noutf8",action="store_true")
-cmdparams.add_argument("--processes",help="Multiprocess, use n threads.", dest="num_processes", type=int, default=multiprocessing.cpu_count())
+cmdparams.add_argument("--processes",help="Multiprocess, use n threads.", dest="num_processes", type=int, default=1)
 args = cmdparams.parse_args()
 
 EMAIL_RE = re.compile('[a-zA-Z0-9.#?$*_-]+@[a-zA-Z0-9.#?$*_-]+')
@@ -349,12 +349,10 @@ def main():
             user_file_handler = open(args.emailsplit[0], 'a')
             domain_file_handler = open(args.emailsplit[1], 'a')
             if num_processes > 1:
-                print("[-] Emailsplit can only run in single threaded mode.")
+                print("[-] Emailsplit can only run in single process mode. Forcing.")
                 num_processes = 1
     except IOError as error:
         print("[-] Problem during Email Split file handling:" +error.args[1])
-
-    print("[-] Processing wordlist using %d processes" % num_processes)
 
     if num_processes == 1:
         # avoid all multiprocessing overhead
@@ -365,6 +363,7 @@ def main():
         except IOError as error:
             print(error.args[1]+" : "+args.infile)
     else:
+        print("[-] Processing wordlist using %d processes" % num_processes)
         workers = []
         for _ in range(num_processes):
             proc = multiprocessing.Process(target=thread_worker, args=(work_queue,))
